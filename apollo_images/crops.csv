@@ -1,0 +1,4 @@
+frame_id,confidence,notes,width_px,height_px,x0,y0,x1,y1,trim_pct,left_edge,right_edge,top_edge,bottom_edge,tilt_deg,tiff_written,check_image
+AS12-49-7174,high,,9452,9214,2373,1482,11825,10696,5.0,detected,detected,placed,detected,0.3,yes,apollo_images/AS12/AS12-49/AS12-49-7174.crop-check.jpg
+AS12-49-7175,high,,9467,9229,2291,1621,11758,10850,5.0,detected,detected,placed,detected,0.23,yes,apollo_images/AS12/AS12-49/AS12-49-7175.crop-check.jpg
+AS12-49-7176,high,,9467,9216,2284,1611,11751,10827,5.0,detected,detected,placed,detected,0.26,yes,apollo_images/AS12/AS12-49/AS12-49-7176.crop-check.jpg
