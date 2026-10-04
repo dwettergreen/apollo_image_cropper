@@ -26,6 +26,7 @@ Cropping (--crop, raw only):
 
 Typical use, with a keep list saved from review.html:
   python3 download_apollo.py --ids keep_list.txt --crop --limit 3            # quick test
+  python3 download_apollo.py --ids keep_list.txt --crop --random 50          # 50 chosen at random
   python3 download_apollo.py --ids keep_list.txt --crop --crop-preview-only  # check all crops
   python3 download_apollo.py --ids keep_list.txt --crop --dry-run            # sizes and disk check
   python3 download_apollo.py --ids keep_list.txt --crop                      # cropped TIFFs
@@ -46,6 +47,7 @@ import csv
 import io
 import json
 import os
+import random
 import shutil
 import ssl
 import sys
@@ -433,13 +435,24 @@ def main():
     p.add_argument('--no-check-images', action='store_true', help='with --crop: do not write *.crop-check.jpg files')
     p.add_argument('--out', default='apollo_images', help='output folder (default: ./apollo_images)')
     p.add_argument('--workers', type=int, default=2, help='parallel downloads (default 2; please keep this low)')
-    p.add_argument('--limit', type=int, help='only the first N matching frames (useful for a test run)')
+    pick = p.add_mutually_exclusive_group()
+    pick.add_argument('--limit', type=int, metavar='N', help='only the first N matching frames (useful for a test run)')
+    pick.add_argument('--random', type=int, metavar='N',
+                      help='N matching frames chosen at random, with no duplicates')
+    p.add_argument('--seed', type=int, help='with --random: repeat an earlier random choice (the seed is printed on each run)')
     p.add_argument('--max-gb', type=float, help='stop before starting if the total is larger than this')
     p.add_argument('--dry-run', action='store_true', help='report count and total size, download nothing')
     p.add_argument('--no-size-check', action='store_true', help='skip the HEAD size check (no total, no disk check)')
     p.add_argument('--yes', action='store_true', help='do not ask for confirmation')
     p.add_argument('--rewrite-host', metavar='OLD=NEW', help='replace a URL prefix, e.g. to use a mirror')
     a = p.parse_args()
+
+    if a.limit is not None and a.limit < 1:
+        p.error('--limit needs a number of 1 or more')
+    if a.random is not None and a.random < 1:
+        p.error('--random needs a number of 1 or more')
+    if a.seed is not None and a.random is None:
+        p.error('--seed goes with --random')
 
     ac = None
     if a.crop:
@@ -476,13 +489,29 @@ def main():
     needed = [col] + (['small_png_url', 'preview_png_url'] if a.crop else [])
     nourl = [r['frame_id'] for r in sel if not all(r[c] for c in needed)]
     sel = [r for r in sel if all(r[c] for c in needed)]
-    if a.limit:
-        sel = sel[:a.limit]
     if nourl:
         log(f'Note: {len(nourl)} frames have no {a.res} file listed and were left out, e.g. {", ".join(nourl[:5])}')
     if not sel:
         log('Nothing matches those filters.')
         return 0
+    if a.limit:
+        sel = sel[:a.limit]
+    if a.random:
+        pool = len(sel)
+        seed = a.seed if a.seed is not None else random.SystemRandom().randrange(1, 1000000)
+        if a.random >= pool:
+            log(f'Note: --random {a.random} is not fewer than the {pool} matching frames, so all of them are used.')
+        else:
+            order = {id(r): i for i, r in enumerate(sel)}
+            sel = sorted(random.Random(seed).sample(sel, a.random), key=lambda r: order[id(r)])
+    if a.random and len(sel) < pool:
+        os.makedirs(a.out, exist_ok=True)
+        pick_file = os.path.join(a.out, f'random_{seed}.txt')
+        with open(pick_file, 'w', encoding='utf-8') as f:
+            f.write(f'# {len(sel)} of {pool} frames chosen at random with --seed {seed}\n')
+            f.write('\n'.join(r['frame_id'] for r in sel) + '\n')
+        log(f'Chose {len(sel)} of {pool} frames at random (seed {seed}). To repeat or resume this '
+            f'choice, run the same command with --seed {seed}. The list is in {pick_file}.')
     if a.rewrite_host:
         old, new = a.rewrite_host.split('=', 1)
         sel = [{k: (v.replace(old, new, 1) if k.endswith('_url') and v else v) for k, v in r.items()} for r in sel]

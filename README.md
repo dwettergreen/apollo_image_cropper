@@ -110,6 +110,24 @@ To save to another drive, add `--out /path/to/folder` to steps 3 to 5, using the
 time so the crops worked out in step 3 are reused. You can stop a run with Ctrl+C at any time;
 running the same command again resumes where it stopped.
 
+**A random sample instead of everything.** Add `--random N` to any of these commands to take N
+frames chosen at random from the keep list, with no duplicates:
+
+```bash
+python3 download_apollo.py --ids keep_list.txt --crop --random 50
+```
+
+Each run prints its seed and saves the chosen frame IDs in the output folder as
+`random_<seed>.txt`. Without `--seed`, every run picks a different sample, so to resume an
+interrupted random run, or to repeat the same choice in a later step, add the printed seed:
+
+```bash
+python3 download_apollo.py --ids keep_list.txt --crop --random 50 --seed 683172
+```
+
+The same seed gives the same frames as long as the keep list and the other filters are
+unchanged. Alternatively, use the saved list directly with `--ids apollo_images/random_683172.txt`.
+
 ## Reviewing candidates with review.html
 
 ![The review.html page](docs/images/review_page.jpg)
@@ -231,6 +249,8 @@ python3 download_apollo.py [options]
 | `--res raw\|processed\|preview\|small\|lpi` | Without `--crop`: which version to download (default `raw`) |
 | `--out FOLDER` | Output folder (default `./apollo_images`) |
 | `--limit N` | Only the first N frames, for a test run |
+| `--random N` | N frames chosen at random, with no duplicates (cannot be combined with `--limit`) |
+| `--seed S` | With `--random`: repeat an earlier random choice; each run prints its seed |
 | `--dry-run` | Show the number of frames, sizes and free disk space, and stop |
 | `--max-gb N` | Stop before starting if the total is larger than N GB |
 | `--workers N` | Parallel downloads (default 2; please keep this low) |
